@@ -1,0 +1,47 @@
+flow_name: hello_translation_flow
+description: >
+  Demonstrates a simple prompt chain — translate to Spanish, then back to English,
+  ending with a local save. Compatible with LangChain/Vertex-style protocols.
+
+inputs:
+  - id: text_input
+    type: file
+    path: ./pipeline_core/data/lorem_ipsum.txt
+
+steps:
+
+  - id: translate_to_spanish
+    type: prompt
+    inputs: [text_input]
+    outputs: [spanish_text]
+    params:
+      model: gpt-4
+      system: You are a translator.
+      user: >
+        Translate the following English text into Spanish:
+
+        {text_input}
+      schema: null
+      function_name: null
+
+  - id: translate_back_to_english
+    type: prompt
+    inputs: [spanish_text]
+    outputs: [english_back]
+    params:
+      model: gpt-4
+      system: You are a translator.
+      user: >
+        Translate this Spanish text back to English:
+
+        {spanish_text}
+      schema: null
+      function_name: null
+
+  - id: save_output
+    type: python
+    inputs: [english_back]
+    outputs: [file_saved_path]
+    script: pipeline_core.utils.utils.save_text_to_file
+    params:
+      output_path: ./outputs/translated_back.txt

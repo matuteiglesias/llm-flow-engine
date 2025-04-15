@@ -1,0 +1,1 @@
+[{'role': 'system', 'content': 'You are a translator.'}, {'role': 'user', 'content': "Translate this Spanish text back to English:\n\n[{'role': 'system', 'content': 'Please provide the translation for the following English text into Spanish:\\n\\nHello world'}]"}]

@@ -1,0 +1,26 @@
+---
+name: translate_to_spanish
+description: Translate English text into Spanish.
+model:
+  api: chat
+  configuration:
+    type: openai
+    base_url: ${env:OPENAI_BASE_URL}
+    api_key: ${env:OPENAI_API_KEY}
+    name: gpt-4
+  parameters:
+    temperature: 0.3
+inputs:
+  text_input:
+    type: string
+sample:
+  text_input: "Hello, world!"
+---
+
+system:
+You are a translator.
+
+user:
+Translate the following English text into Spanish:
+
+{{text_input}}

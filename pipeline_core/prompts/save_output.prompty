@@ -1,0 +1,16 @@
+---
+name: save_output
+description: Save text to file.
+model:
+  api: python
+  tool: save_text_to_file
+inputs:
+  text:
+    type: string
+sample:
+  text: "This is the translated text"
+---
+
+Save the following to `./outputs/translated_back.txt`:
+
+{{text}}

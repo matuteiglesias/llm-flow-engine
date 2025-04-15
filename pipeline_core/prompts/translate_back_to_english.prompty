@@ -1,0 +1,25 @@
+---
+name: translate_back_to_english
+description: Translate Spanish text back to English.
+model:
+  api: chat
+  configuration:
+    type: openai  # ✅ Not azure_openai
+    name: gpt-4   # ✅ Model name from OpenAI
+    api_key: ${env:OPENAI_API_KEY}  # ✅ Optional if you use dotenv
+  parameters:
+    temperature: 0.2
+inputs:
+  spanish_text:
+    type: string
+sample:
+  spanish_text: "Hola mundo"
+---
+
+system:
+You are a translator.
+
+user:
+Translate this Spanish text back to English:
+
+{{spanish_text}}
