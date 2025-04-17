@@ -50,6 +50,18 @@ docker build -t ai-workflow-mvp .
 docker run -p 8000:8000 --env-file .env ai-workflow-mvp
 ```
 
+### 6. Run Frontend (Dev)
+
+```bash
+cd frontend
+npm install
+npm run dev
+# access via http://localhost:3000
+```
+
+> 📦 Built with: Next.js 15, Tailwind CSS, Radix UI, ShadCN, TypeScript
+
+
 ---
 
 ## 🔁 Example Flow: `hello.yaml`
