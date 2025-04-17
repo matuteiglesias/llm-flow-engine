@@ -106,6 +106,45 @@ def patch_openai_logging():
     SyncAPIClient._request = patched_request
 
 
+
+
+import json
+import logging
+import os
+from pathlib import Path
+
+
+def write_output(run_id: str, output: dict, base_dir=".runs"):
+    run_dir = Path(base_dir) / run_id
+    run_dir.mkdir(parents=True, exist_ok=True)
+    out_path = run_dir / "flow.output.json"
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(output, f, indent=2)
+    print(f"✅ Output written to {out_path}")
+
+
+def setup_logging(run_id: str, base_dir=".runs", level=logging.INFO):
+    run_dir = Path(base_dir) / run_id
+    run_dir.mkdir(parents=True, exist_ok=True)
+    log_path = run_dir / "flow.log"
+
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        handlers=[
+            logging.FileHandler(log_path),
+            logging.StreamHandler()
+        ]
+    )
+
+    logging.info(f"📄 Log file initialized at {log_path}")
+
+
+def read_file_as_text(path: str) -> str:
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
+
+
 # def scan_folder(base_path, include_ext=None, exclude_patterns=None):
 #     base = Path(base_path).expanduser()
 #     files = list(base.rglob("*"))

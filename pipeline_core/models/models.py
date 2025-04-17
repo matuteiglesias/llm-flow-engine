@@ -1,19 +1,21 @@
 import importlib
 import logging
-
-import openai
-
+from opentelemetry.trace.status import Status, StatusCode
 from pipeline_core.utils.utils import load_yaml  # or wherever you keep it
 
+from promptflow.tracing._trace import enrich_span_with_output
+from pipeline_core.utils.utils import write_output, setup_logging
+
 logging.getLogger("promptflow").setLevel(logging.DEBUG)
-# OpenAI API Key (⚠️ Replace with secure retrieval method)
-openai.api_key = os.getenv("OPENAI_API_KEY")
-client = openai.AsyncOpenAI(api_key=openai.api_key)
 
 from dotenv import load_dotenv
-
-# Load variables from .env
 load_dotenv()
+
+import os
+import openai
+# print("API KEY:", os.getenv("OPENAI_API_KEY"))
+client = openai.AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
 
 
 # PythonBlock
@@ -72,17 +74,23 @@ from promptflow.core import Prompty
 # os.getenv("OPENAI_BASE_URL")
 
 
+import ast
+
+
 class PromptBlock:
     def __init__(self, config):
         self.id = config["id"]
         self.inputs = config.get("inputs", [])
         self.outputs = config.get("outputs", [self.id])
-        self.executor = ThreadPoolExecutor()  # Add this line for reuse
+        self.executor = ThreadPoolExecutor()
 
-        # Resolve prompty path relative to project root
+        # 📄 Resolve prompty path relative to project root
         base_dir = Path(__file__).resolve().parents[1]
         self.prompty_path = base_dir / "prompts" / f"{self.id}.prompty"
 
+        # 🧠 💥 THIS is the missing line that caused your error
+        self.prompty = Prompty.load(str(self.prompty_path))
+        
         # Optional: show in dev mode
         if os.getenv("PROMPTFLOW_DEBUG"):
             print(f"📄 Loading prompty: {self.prompty_path}")
@@ -109,11 +117,32 @@ class PromptBlock:
         # import socket
         # print("🌐 CAN RESOLVE openai.com:", socket.gethostbyname("api.openai.com"))
 
-        self.prompty = Prompty.load(
-            source=str(self.prompty_path), model=self.model_override
-        )
+        # self.prompty = Prompty.load(
+        #     source=str(self.prompty_path), model=self.model_override
+        # )
 
     # import json
+
+    @staticmethod
+    def _extract_clean_output(response):
+        """
+        Handle GPT output that is either a string or a stringified message list.
+        If a message list, extract the *last message content*, regardless of role.
+        """
+        content = response.choices[0].message.content.strip()
+        print("CONTENT:", content)
+
+        try:
+            # Try parsing the content as a list of messages
+            parsed = ast.literal_eval(content)
+            if isinstance(parsed, list) and all("content" in m for m in parsed):
+                return parsed[-1]["content"]
+        except Exception:
+            pass
+
+        # If it's just a plain string
+        return content
+
 
     @staticmethod
     def _maybe_parse_json_string(value):
@@ -158,19 +187,28 @@ class PromptBlock:
             # Run in a background thread to avoid blocking FastAPI event loop
             try:
 
-                prompt = self.prompty.render(**input_values)
+                rendered = self.prompty.render(**input_values)
+                print("🧪 Rendered Prompt:\n", rendered)
 
                 response = openai.chat.completions.create(
                     model=self.model_override["configuration"]["model"],
                     messages=(
-                        prompt
-                        if isinstance(prompt, list)
-                        else [{"role": "user", "content": prompt}]
+                        rendered
+                        if isinstance(rendered, list)
+                        else [{"role": "user", "content": rendered}]
                     ),
                     temperature=self.model_override["parameters"]["temperature"],
                     max_tokens=self.model_override["parameters"]["max_tokens"],
                 )
-                result = response.choices[0].message.content.strip()
+                # result = response.choices[0].message.content.strip()
+                result = self._extract_clean_output(response)
+                RETURNS = {self.outputs[0]: result}
+                print("RETURNS", RETURNS)
+
+                return {self.outputs[0]: result}
+
+
+
             except Exception as e:
                 import traceback
 
@@ -178,67 +216,138 @@ class PromptBlock:
                 print(f"🔴 Full Exception: {repr(e)}")
                 raise
 
-            if isinstance(result, dict):
-                return result
+            # if isinstance(result, dict):
+            #     return result
             return {self.outputs[0]: result}
 
         except Exception as e:
             print(f"❌ Error running prompt '{self.id}': {repr(e)}")
             raise
 
-
-# class PromptCard:
-#     def __init__(self, config: dict):
-#         self.id = config.get("id")
-#         self.system = config["system"]
-#         self.user_template = config["user"]
-#         self.model = config.get("model", "gpt-4")
-#         self.schema = config.get("schema", None)
-#         self.function_name = config.get("function_name", None)
-#         self.outputs = config.get("outputs", [self.id])
-
-#     def format_prompt(self, context: dict):
-#         return [
-#             {"role": "system", "content": self.system},
-#             {"role": "user", "content": self.user_template.format(**context)}
-#         ]
-
-#     async def run(self, context: dict) -> dict:
-#         import openai
-#         client = openai.AsyncOpenAI(api_key=OPENAI_API_KEY)
-
-#         messages = self.format_prompt(context)
-
-#         response = await client.chat.completions.create(
-#             model=self.model,
-#             messages=messages,
-#             temperature=0.3
-#         )
-
-#         output_text = response.choices[0].message.content.strip()
-
-#         # 👇 This is the key line — store under the declared output key
-#         return {self.outputs[0]: output_text}
-
-
 import inspect
 
 
+import os
+import json
+from pathlib import Path
+
+def write_trace(run_id: str, spans: list, base_dir=".runs"):
+    """
+    Store spans as a trace.json in .runs/{run_id}/
+    """
+    run_dir = Path(base_dir) / run_id
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    trace_path = run_dir / "trace.json"
+    with open(trace_path, "w", encoding="utf-8") as f:
+        json.dump(spans, f, indent=2)
+
+    print(f"📄 Trace written to {trace_path}")
+
+
+from opentelemetry import trace as otel_trace
+from promptflow.tracing._tracer import TraceType
+from promptflow.tracing._trace import start_as_current_span
+from opentelemetry.trace import SpanKind, Status, StatusCode
+from promptflow.tracing import start_trace, trace
+import inspect, uuid
+
+from promptflow.tracing._trace import start_as_current_span
+from opentelemetry import trace as otel_trace
+
+
+import json
+
+def safe_json(obj):
+    try:
+        return json.dumps(obj, ensure_ascii=False)
+    except Exception:
+        return str(obj)
+        
 class PromptFlowRunner:
-    def __init__(self, flow_config: dict):  # ✅ expects dict now
+    def __init__(self, flow_config: dict):
         self.flow_config = flow_config
         self.blocks = [build_block(cfg) for cfg in self.flow_config["steps"]]
 
-    async def run(self, initial_input):
+
+    # async def run(self, initial_input, run_id=None):
+    #     run_id = run_id or str(uuid.uuid4())
+
+
+    async def run(self, initial_input, run_id=None):
+        run_id = run_id or str(uuid.uuid4())
+        setup_logging(run_id)
+        start_trace(collection=run_id)
         data = initial_input
+        otel_tracer = otel_trace.get_tracer("promptflow")
+
         for block in self.blocks:
-            print(f"▶️ Running block: {block.id}")
-            if inspect.iscoroutinefunction(block.run):
-                data = await block.run(data)
-            else:
-                data = block.run(data)  ##########
+            logging.info(f"▶️ Running block: {block.id}")
+            # with trace(name=block.id) as span:
+            # from promptflow.tracing import start_as_current_span
+
+
+            otel_tracer = otel_trace.get_tracer("promptflow")
+
+            with start_as_current_span(otel_tracer, block.id) as span:
+                span.set_attribute("kind", "LLM")  # instead of integer 1
+                span.set_attribute("block_id", block.id)
+
+
+                input_values = {k: data.get(k) for k in block.inputs} if hasattr(block, "inputs") else {}
+
+
+                try:
+                    result = await block.run(data) if inspect.iscoroutinefunction(block.run) else block.run(data)
+                except Exception as e:
+                    logging.error(f"❌ Error in block {block.id}: {e}")
+                    raise
+
+
+                # if inspect.iscoroutinefunction(block.run):
+                #     result = await block.run(data)
+                # else:
+                #     result = block.run(data)
+
+                span.set_attribute("inputs", safe_json(input_values))
+                span.set_attribute("outputs", safe_json(result))
+
+                enrich_span_with_output(span, result)
+                # spans.append(span.to_dict())
+                data = result
+
+        write_output(run_id, data)
+        # Save trace
+        # write_trace(run_id, spans)
         return data
 
+    from promptflow.tracing._trace import start_as_current_span
+
+
+
+    async def run_block_with_trace(block, context):
+        span_name = block.id
+        tracer = otel_trace.get_tracer("promptflow")
+
+        with start_as_current_span(tracer, span_name) as span:
+            try:
+                # Record inputs
+                span.set_attribute("inputs", context)
+
+                if inspect.iscoroutinefunction(block.run):
+                    result = await block.run(context)
+                else:
+                    result = block.run(context)
+
+                # Record outputs
+                span.set_attribute("outputs", result)
+                return result
+
+            except Exception as e:
+                span.record_exception(e)
+                span.set_status(StatusCode.ERROR)
+                raise
+            
 
 #     runner = PromptFlowRunner(flow_config)
 # await runner.run(initial_input)

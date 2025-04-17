@@ -1,6 +1,8 @@
 # api/router.py
 
 import asyncio
+import uuid
+import os
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -8,36 +10,45 @@ from pydantic import BaseModel
 from pipeline_core.models.models import PromptFlowRunner, build_block
 from pipeline_core.utils.utils import load_flow_inputs, load_yaml
 
-router = APIRouter(prefix="/api")
+# ✅ This is your root router, mounted as /api in main.py
+router = APIRouter(prefix="/api")  # ← THIS IS KEY
 
+# ----------------------------
+# 🧠 API Input Models
+# ----------------------------
 
 class FlowInput(BaseModel):
     flow_path: str
     input_data: dict = {}
 
-
 class BlockInput(BaseModel):
     block_config: dict
     context: dict = {}
 
-
+# ----------------------------
+# ▶️ Run a full flow
+# ----------------------------
 @router.post("/run_flow")
 async def run_flow(payload: FlowInput):
-    try:
-        flow_config = load_yaml(payload.flow_path)
+    # try:
+    flow_config = load_yaml(payload.flow_path)
 
-        # 🧠 Smart fallback: if no input_data, resolve from config
-        if not payload.input_data or not payload.input_data.get("text_input"):
-            payload.input_data = load_flow_inputs(flow_config)
+    # Default input fallback
+    if not payload.input_data or not payload.input_data.get("text_input"):
+        payload.input_data = load_flow_inputs(flow_config)
 
-        runner = PromptFlowRunner(flow_config)
-        output = await runner.run(payload.input_data)
-        return {"output": output}
+    run_id = str(uuid.uuid4())
+    runner = PromptFlowRunner(flow_config)
+    output = await runner.run(payload.input_data, run_id=run_id)
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    return {"output": output, "run_id": run_id}
 
+    # except Exception as e:
+    #     raise HTTPException(status_code=500, detail=str(e))
 
+# ----------------------------
+# ▶️ Run a single block
+# ----------------------------
 @router.post("/run_block")
 async def run_block(payload: BlockInput):
     try:
@@ -50,14 +61,12 @@ async def run_block(payload: BlockInput):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
-import os
-
+# ----------------------------
+# 🧪 Test OpenAI Connection
+# ----------------------------
 import openai
-from fastapi import APIRouter
 
-
-@router.get("/api/test_openai")
+@router.get("/test_openai")
 async def test_openai_connect():
     openai.api_key = os.getenv("OPENAI_API_KEY")
     try:

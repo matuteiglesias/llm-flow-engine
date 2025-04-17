@@ -1,8 +1,0 @@
-code_review:
-  model: gpt-4
-  prompt: "Please review this Python script"
-  temperature: 0.2
-
-summarize:
-  model: gpt-3.5-turbo
-  prompt: "Summarize the following content:"

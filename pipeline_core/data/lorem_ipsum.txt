@@ -1,0 +1,1 @@
+This tool allows users to input text and receive a translated version using an AI model.

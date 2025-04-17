@@ -1,0 +1,61 @@
+# ─── PYTHON ────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+*.egg
+*.log
+
+# Ignore environment files
+.env
+*.env
+
+# Ignore local dev/runtime dirs
+.runs/
+
+# ─── FRONTEND (Next.js + Node.js + Tailwind) ──────────────
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.vercel/
+frontend/dist/
+
+# Editor config
+frontend/.eslintcache
+frontend/.DS_Store
+
+# ─── COVERAGE + DEBUG ─────────────────────────────────────
+htmlcov/
+coverage.xml
+.cache/
+debug_prompt_payload.json
+
+# ─── SYSTEM & OS FILES ─────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ─── PYTHON VENV (OPTIONAL, IF INSIDE REPO) ───────────────
+venv/
+.env/
+.new_env/
+.new_venv/
+*.venv/
+
+# ─── OUTPUT / GENERATED ARTIFACTS ─────────────────────────
+outputs/
+callgraph.*
+definitions.txt
+
+# ─── LOGS & TEMP ──────────────────────────────────────────
+*.log
+*.tmp
+*.bak
+*.swp
+
+# ─── VS CODE & IDEs ───────────────────────────────────────
+.vscode/
+.idea/
+*.code-workspace
+
