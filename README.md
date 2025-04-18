@@ -2,6 +2,8 @@
 
 **ai-workflow-mvp** is a lightweight framework to prototype and run AI workflows using YAML and Prompty. Built for developers who want a minimal but scalable base to compose multi-step LLM pipelines and deploy them easily with FastAPI and Docker.
 
+![App Screenshot](https://raw.githubusercontent.com/matuteiglesias/llm-flow-engine/main/frontend/public/Screenshot%202025-04-18%20at%2001-12-59%20Create%20Next%20App.png)
+
 ---
 
 ## ✨ Features
@@ -13,6 +15,7 @@
 - Docker-ready deployment ✅
 
 ---
+
 
 ## 🚀 Quick Start
 
