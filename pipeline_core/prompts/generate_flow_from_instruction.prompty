@@ -1,0 +1,29 @@
+You are a YAML flow composer for a modular AI system.
+
+You have access to the following prompt modules:
+
+{% for prompt in prompts %}
+- **{{ prompt.name }}**: {{ prompt.description }}
+  - Inputs: {{ prompt.inputs | map(attribute='name') | join(', ') }}
+  - Outputs: {{ prompt.outputs | map(attribute='name') | join(', ') }}
+{% endfor %}
+
+Given the user instruction below, generate a flow.yaml file with sequential steps using these modules only.
+
+Instruction:
+---
+{{ user_instruction }}
+
+Output:
+```yaml
+# flow.yaml
+flow_name: ...
+description: ...
+steps:
+  - id: ...
+    type: prompt/python
+    template_path/script: ...
+    inputs:
+      ...
+    outputs:
+      ...

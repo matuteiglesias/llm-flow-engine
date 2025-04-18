@@ -1,0 +1,38 @@
+prompts:
+  - name: translate_to_spanish
+    path: prompts/translate_to_spanish.prompty
+    description: Translate English input into Spanish.
+    inputs:
+      - name: text_input
+        type: string
+    outputs:
+      - name: spanish_text
+        type: string
+    tags: [translation, spanish]
+
+  - name: translate_back_to_english
+    path: prompts/translate_back_to_english.prompty
+    description: Translate Spanish input back to English.
+    inputs:
+      - name: spanish_text
+        type: string
+    outputs:
+      - name: english_back
+        type: string
+    tags: [translation, english]
+
+  - name: save_output
+    path: pipeline_core/utils/utils.save_text_to_file
+    description: Save a text string to a local file.
+    type: python
+    inputs:
+      - name: english_back
+        type: string
+    outputs:
+      - name: file_saved_path
+        type: path
+    params:
+      - name: output_path
+        type: string
+        default: ./outputs/translated_back.txt
+    tags: [file, io, save]
